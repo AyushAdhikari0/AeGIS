@@ -1,0 +1,34 @@
+<linker>
+	<assembly fullname="Assembly-CSharp" ignoreIfMissing="1">
+		<type fullname="DisplayCoordinates">
+			<method name="createNewFinVertex"/>
+			<method name="refreshEdgeCylindersAndFinCoords"/>
+			<method name="refreshEdgeCylindersAndFinCoords"/>
+		</type>
+		<type fullname="FinDimensionInputManager">
+			<method name="handleInputMaterialData"/>
+		</type>
+		<type fullname="MenuManager">
+			<method name="cancelDesignButtonClick"/>
+			<method name="saveDesignButtonClick"/>
+			<method name="setSelectDimensionMenu"/>
+		</type>
+		<type fullname="SliderValueButtonSetter">
+			<method name="setValueOnSlider"/>
+			<method name="setValueOnSlider"/>
+			<method name="updateStoredValue"/>
+			<method name="updateStoredValue"/>
+		</type>
+		<type fullname="ThicknessSliderManager">
+			<method name="updateSliderValue"/>
+			<method name="updateSliderValue"/>
+		</type>
+		<type fullname="VertexCoordinateSetter">
+			<method name="setXCoord"/>
+			<method name="setYCoord"/>
+			<method name="toggleCoordinateLabelVisibility"/>
+			<method name="updateStoredXCoord"/>
+			<method name="updateStoredYCoord"/>
+		</type>
+	</assembly>
+</linker>
