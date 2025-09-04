@@ -1,6 +1,6 @@
 
 
-**User Guide for AeGIS: Aero-elastic Graphical Interface Simulator**   
+# **User Guide for AeGIS: Aero-elastic Graphical Interface Simulator**   
 Ayush Adhikari
 
 **Table of Contents**
@@ -50,7 +50,8 @@ Then press the ‘Play’ and fullscreen buttons (highlighted in red).
 # **Main Page** {#main-page}
 
 This should take you to the main page as seen below:  
-**![][image3]**
+**![][photos/main_page.jpeg]**
+
 
 ## **Controls** {#controls}
 
