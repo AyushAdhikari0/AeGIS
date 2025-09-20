@@ -29,7 +29,6 @@ public class CameraPositionManager : MonoBehaviour
     void Start()
     {
         // get initial camera angles
-
         Vector3 angles = transform.eulerAngles;
         yaw = angles.y;
         pitch = angles.x;
