@@ -6,17 +6,16 @@ using System.Linq;
 // using System.Numerics;
 using System.Runtime.InteropServices;
 using TMPro;
+using Unity.Play.Publisher.Editor;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class DisplayCoordinates : MonoBehaviour
 {
-    // Start is called before the first frame update
+    public GameObject mainCam;              // camera object
 
-    public GameObject mainCam;
-
-    public List<Vector3> temp_finCoords;
+    public List<Vector3> temp_finCoords;    // stores unsaved fin coordinates in the fin designer
 
     public float vertexSphereRadius = 4;
 
@@ -24,63 +23,17 @@ public class DisplayCoordinates : MonoBehaviour
 
     public GameObject finCylinderPrefab;
 
-    private bool hasGeneratedCylinders = false;
-
-    public GameObject lastVertex;
-    public GameObject secondLastVertex;
+    public GameObject lastVertex;           // store first and last vertex in fin geometry
     public GameObject firstVertex;
 
-    public Button saveButton;
+    public Button saveButton;               // save button for saving current design
+    public TextMeshProUGUI errorTextBlock;  // text block that displays error messages
 
-    public TextMeshProUGUI errorTextBlock;
-    void Start()
-    {
-    }
-
-    // Update is called once per frame
     void LateUpdate()
     {
-        if (!hasGeneratedCylinders)
-        {
-            foreach (GameObject v in GameObject.FindGameObjectsWithTag("Fin Vertex Sphere"))
-            {
-                Destroy(v);
-            }
-            initialiseVertices();
-            // temp_finCoords = new List<Vector3>();
-
-            hasGeneratedCylinders = true;
-            refreshEdgeCylindersAndFinCoords();
-        }
-        // updateTempFinCoords();
-        // refreshEdgeCylindersAndFinCoords();
-
-        if (finGeometryIsValid())
-        {
-            saveButton.interactable = true;
-        }
-        else
-        {
-            saveButton.interactable = false;
-        }
-
-
+        // make save button interactible if fin geometry is valid
+        saveButton.interactable = finGeometryIsValid();
     }
-
-    // public void updateTempFinCoords()
-    // {
-    //     //updates tempfinCoords depending on the vertex sphere locations
-
-    //     // GameObject[] spheres = GameObject.FindGameObjectsWithTag("Fin Vertex Sphere");
-
-    //     // foreach (GameObject sphere in spheres)
-    //     // {
-    //     //     int sphereIndex = sphere.GetComponent<FinVertexSphereScript>().index;
-    //     //     Debug.Log(sphereIndex);
-    //     //     temp_finCoords[sphereIndex] = sphere.transform.position;
-    //     // }
-
-    // }
 
     void OnEnable()
     {
@@ -90,7 +43,7 @@ public class DisplayCoordinates : MonoBehaviour
             Destroy(v);
         }
 
-        // initialise new vertices
+        // initialise new vertices and cylinders
         initialiseVertices();
         refreshEdgeCylindersAndFinCoords();
     }
@@ -98,79 +51,57 @@ public class DisplayCoordinates : MonoBehaviour
     public void initialiseVertices()
     {
 
-        //destroy all finVertexSpheres and finEdgeCylinders
-
-        // List<GameObject> toDestroy = new List<GameObject>();
-
-        // toDestroy.AddRange(GameObject.FindGameObjectsWithTag("Fin Vertex Sphere"));
-
-        // foreach (GameObject g in toDestroy)
-        // {
-        //     Destroy(g);
-        // }
-
+        // get saved fin coordinates from the main camera
         List<Vector3> finCoords = mainCam.GetComponent<FinDimensionInputManager>().finCoords;
 
-
-        // create fin vertex spheres based on finCoords
-
+        // stores previous vertex
         GameObject prev = null;
 
         for (int i = 0; i < finCoords.Count; i++)
         {
-            int xConstrained = 0;
-            int yConstrained = 0;
+            // these booleans constrain the vertex's position domains
+            bool xConstrained;      // vertex can only move along x axis if true
+            bool yConstrained;      // vertex can only move along y axis if true
 
-            if ((i == 0) || (i == finCoords.Count - 1))
-            {
-                xConstrained = 1;
-                if (i == 0)
-                {
-                    yConstrained = 1;
-                }
-            }
+            // constrain the first vertex in x and y, constrain the last vertex in x
+            xConstrained = ((i == 0) || (i == finCoords.Count - 1));
+            yConstrained = (i == 0);
+
             GameObject currentFinVertex = generateVertexSphere(finCoords[i], xConstrained, yConstrained);
 
             if (i == 0)
             {
-                currentFinVertex.GetComponent<FinVertexSphereScript>().setPreviousVertex(null);
-                currentFinVertex.GetComponent<FinVertexSphereScript>().setNextVertex(null);
+                // store first vertex
                 firstVertex = currentFinVertex;
 
             }
             else
             {
+                // assign 'previous vertex' field for current vertex
                 currentFinVertex.GetComponent<FinVertexSphereScript>().setPreviousVertex(prev);
-                currentFinVertex.GetComponent<FinVertexSphereScript>().setNextVertex(null);
 
+                // assign the 'next vertex' field for previous vertex 
                 prev.GetComponent<FinVertexSphereScript>().setNextVertex(currentFinVertex);
 
                 if (i == finCoords.Count - 1)
                 {
+                    // store last vertex
                     lastVertex = currentFinVertex;
                 }
-
-                // if (i == finCoords.Count - 2)
-                // {
-                //     secondLastVertex = currentFinVertex;
-                // }
-
             }
 
+            // store previous vertex for iteration
             prev = currentFinVertex;
-
-
+            
         }
-
     }
 
     public void refreshEdgeCylindersAndFinCoords()
     {
 
-        //destroy all finEdgeCylinders
+        //destroy all existing fin edge cylinders
 
         List<GameObject> toDestroy = new List<GameObject>();
-
         toDestroy.AddRange(GameObject.FindGameObjectsWithTag("Fin Edge Cylinder"));
 
         foreach (GameObject g in toDestroy)
@@ -178,46 +109,43 @@ public class DisplayCoordinates : MonoBehaviour
             Destroy(g);
         }
 
+        // clear temporary coords 
+        temp_finCoords.Clear();
 
-        // create fin edges using cylinders
-
+        // using the first vertex, and the linked structure of vertices, reconstruct the fin edges
         GameObject currentVertex = firstVertex;
         GameObject previousVertex = lastVertex;
 
-        temp_finCoords.Clear();
-
         while (true)
         {
-
-
+            // construct a fin edge
             generateEdgeCylinder(previousVertex.transform.position, currentVertex.transform.position);
+
+            // store current vertex to temporary coordinate list
             temp_finCoords.Add(currentVertex.transform.position);
 
+            // quit if final vertex reached
             if (currentVertex == lastVertex)
             {
                 break;
             }
 
+            // update previous and current cylinder using linked list structure.
             previousVertex = currentVertex;
             currentVertex = currentVertex.GetComponent<FinVertexSphereScript>().getNextVertex();
-
         }
-        // for (int i = 0; i < temp_finCoords.Count; i++)
-        // {
-        //     if (i == temp_finCoords.Count - 1)
-        //     {
-        //         generateEdgeCylinder(temp_finCoords[i], temp_finCoords[0]);
-        //     }
-        //     else
-        //     {
-        //         generateEdgeCylinder(temp_finCoords[i], temp_finCoords[i + 1]);
-        //     }
-        // }
+
     }
 
-    GameObject generateVertexSphere(Vector3 coordinate, int xConstrained, int yConstrained)
+    GameObject generateVertexSphere(Vector3 coordinate, bool xConstrained, bool yConstrained)
     {
-        GameObject vertexSphere = Instantiate(vertexSpherePrefab, coordinate, Quaternion.Euler(xConstrained, yConstrained, 0f), transform);
+        // initialise new vertex
+        // also encode the constraints in the vertex's rotation for troubleshooting
+        GameObject vertexSphere = Instantiate(vertexSpherePrefab, coordinate, Quaternion.Euler(Convert.ToInt32(xConstrained), Convert.ToInt32(yConstrained), 0f), transform);
+
+        // initialise adjacent vertices as null
+        vertexSphere.GetComponent<FinVertexSphereScript>().setNextVertex(null);
+        vertexSphere.GetComponent<FinVertexSphereScript>().setPreviousVertex(null);
 
         return vertexSphere;
     }
@@ -229,7 +157,7 @@ public class DisplayCoordinates : MonoBehaviour
         // position cylinder
         finCylinder.transform.position = (start + end) / 2;
 
-        //scale and rotate cylinder
+        // scale and rotate cylinder
 
         Vector3 direction = end - start;
         finCylinder.transform.up = direction.normalized;
@@ -237,58 +165,43 @@ public class DisplayCoordinates : MonoBehaviour
         finCylinder.transform.localScale = new Vector3(1, 1, 1) * 0.005f * Vector3.Distance(mainCam.transform.position, finCylinder.transform.position);
         finCylinder.transform.localScale = new Vector3(finCylinder.transform.localScale.x, direction.magnitude / 2, finCylinder.transform.localScale.z);
 
+        // add tags
         finCylinder.tag = "Fin Edge Cylinder";
         finCylinder.transform.parent = transform;
-
-
-
-        // GameObject arrowCylinder1 = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        // GameObject arrowCylinder2 = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        
     }
 
     public void createNewFinVertex()
     {
-        // first update the last sphere index
+        // adds a new vertex between the last and second last vertex
 
-        // GameObject[] otherSpheres = GameObject.FindGameObjectsWithTag("Fin Vertex Sphere");
-        // foreach (GameObject sphere in otherSpheres)
-        // {
-        //     if (sphere.GetComponent<FinVertexSphereScript>().index == temp_finCoords.Count-1)
-        //     {
-        //         sphere.transform.eulerAngles = new Vector3(sphere.transform.eulerAngles.x + 1, sphere.transform.eulerAngles.y, sphere.transform.eulerAngles.z);
-        //     }
-        // }
+        // get second last vertex
+        GameObject secondLastVertex = lastVertex.GetComponent<FinVertexSphereScript>().previousVertex;
 
-        secondLastVertex = lastVertex.GetComponent<FinVertexSphereScript>().previousVertex;
-
+        // find middle position between last and second last vertex
         Vector3 secondLastSpot = 0.5f * (lastVertex.transform.position + secondLastVertex.transform.position);
 
-        GameObject newSphere = generateVertexSphere(secondLastSpot, 0, 0);
+        GameObject newSphere = generateVertexSphere(secondLastSpot, false, false);
 
-        // alter the last vertex link
+        // alter the last vertex links
         newSphere.GetComponent<FinVertexSphereScript>().setNextVertex(lastVertex);
         lastVertex.GetComponent<FinVertexSphereScript>().setPreviousVertex(newSphere);
 
-        // alter the second last vertex link
+        // alter the second last vertex links
         newSphere.GetComponent<FinVertexSphereScript>().setPreviousVertex(secondLastVertex);
         secondLastVertex.GetComponent<FinVertexSphereScript>().setNextVertex(newSphere);
-
-        secondLastVertex = newSphere;
-
-        // temp_finCoords.Insert(temp_finCoords.Count-1,secondLastSpot);
     }
 
     public bool finGeometryIsValid()
     {
+        // checks if the current fin geometry (stored in temp_finCoords) is valid
 
+        // this string stores all the error messages
         String statusString = "";
 
-
-        //check self intersecting points
+        //first, check self intersecting points
 
         HashSet<Vector3> pointSet = new HashSet<Vector3>();
-
-        //checks for both self intersecting points
         foreach (Vector3 coord in temp_finCoords)
         {
             if (pointSet.Contains(coord))
@@ -298,25 +211,27 @@ public class DisplayCoordinates : MonoBehaviour
             }
 
             pointSet.Add(coord);
-
-            // foreach (Vector3 coord2 in finCoords)
         }
 
-        // check none of the fin edge cylinders are coloured red (intersectig)
+        // check none of the fin edge cylinders are coloured red (intersecting)
+        // (the cylinder's script colours edges red if they intersect)
 
         bool hasIntersectingEdges = false;
         int numRootChordEdges = 0;
 
         foreach (GameObject cylinder in GameObject.FindGameObjectsWithTag("Fin Edge Cylinder"))
         {
-            if ((cylinder.transform.position.y < 0.01) && ((cylinder.transform.eulerAngles.z == -90) ||(cylinder.transform.eulerAngles.z == 90))){
+            // count number of root chord edges as well
+            if ((cylinder.transform.position.y < 0.01) && ((cylinder.transform.eulerAngles.z == -90) || (cylinder.transform.eulerAngles.z == 90)))
+            {
                 numRootChordEdges += 1;
             }
 
+            // red cylinders are intersecting
             if (cylinder.GetComponent<Renderer>().material.color == Color.red)
-                {
+            {
                 hasIntersectingEdges = true;
-                }
+            }
         }
 
         if (hasIntersectingEdges) {
@@ -327,8 +242,8 @@ public class DisplayCoordinates : MonoBehaviour
             statusString += "Too many edges on the Root Chord!\n";           
         }
 
-        // check that the fin geometry is clockwise by checking the relative position of the second last and last vertex
-
+        // check that the fin geometry is clockwise by checking the relative position of the first and last vertex
+        // this works because they are both x-constrained and linked
         if (lastVertex.transform.position.x <= firstVertex.transform.position.x)
         {
             statusString += "Vertex winding order must be clockwise!";
@@ -337,6 +252,7 @@ public class DisplayCoordinates : MonoBehaviour
         //display error message
         errorTextBlock.text = statusString;
 
+        // returns true if there are no errors
         return statusString.Length == 0;
     }
 }
